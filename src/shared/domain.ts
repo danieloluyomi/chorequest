@@ -1,0 +1,10 @@
+export type Role='student'|'parent';
+export type AssignmentStatus='todo'|'pending'|'changes_requested'|'approved'|'rejected'|'completed';
+export type Theme='garden'|'forest'|'midnight'|'ocean';
+export interface UserSummary{id:string;name:string;role:Role;points:number;xp:number;level:number;streak:number;bestStreak:number;theme:Theme;animation:boolean}
+export interface Chore{id:string;title:string;description:string;category:string;difficulty:string;points:number;xp:number;dueAt:string;recurrence:string;requiresApproval:boolean;requiresProof:boolean;assigneeId:string;assigneeName:string;status:AssignmentStatus;submissionId?:string;feedback?:string}
+export interface Reward{id:string;name:string;description:string;icon:string;cost:number;stock:number;enabled:boolean;requiresApproval:boolean;goal:boolean}
+export interface Transaction{id:string;amount:number;kind:string;note:string;createdAt:string}
+export interface Notice{id:string;title:string;body:string;read:boolean;createdAt:string}
+export interface Activity{id:string;message:string;createdAt:string;amount?:number}
+export interface DashboardData{user:UserSummary;chores:Chore[];rewards:Reward[];transactions:Transaction[];notifications:Notice[];activity:Activity[];children:UserSummary[];pendingCount:number}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChoreQuest — Turn chores into wins</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#"><span class="brand-mark">CQ</span><span>ChoreQuest</span></a>
+      <nav>
+        <button class="nav-item active" data-view="home"><span>⌂</span> Home</button>
+        <button class="nav-item" data-view="chores"><span>✓</span> Chores <b id="nav-count">4</b></button>
+        <button class="nav-item" data-view="rewards"><span>♢</span> Rewards</button>
+        <button class="nav-item" data-view="family"><span>♧</span> Family</button>
+      </nav>
+      <div class="sidebar-card">
+        <div class="mini-illustration">🏆</div>
+        <strong>Keep the streak!</strong>
+        <p>Complete one chore today to reach a 6 day streak.</p>
+      </div>
+      <button class="settings nav-item"><span>⚙</span> Settings</button>
+    </aside>
+
+    <main>
+      <header>
+        <button class="mobile-menu" aria-label="Open menu">☰</button>
+        <div class="role-switch" aria-label="Choose app role">
+          <button class="active" data-role="student">Student</button>
+          <button data-role="parent">Parent</button>
+        </div>
+        <div class="header-actions">
+          <button class="icon-button" aria-label="Notifications">♢<i></i></button>
+          <div class="avatar">AM</div>
+          <div class="user-label"><strong id="user-name">Alex Morgan</strong><span id="role-label">Student</span></div>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="welcome-row">
+          <div><p class="eyebrow">MONDAY, AUGUST 10</p><h1 id="greeting">Hey, Alex! <span>👋</span></h1><p id="subtitle">Ready to earn some points today?</p></div>
+          <button class="primary" id="add-chore">＋ Add a chore</button>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="points-card">
+            <div><p>YOUR POINTS</p><div class="points"><span id="points-total">740</span> <small>pts</small></div><span class="delta">↑ 120 this week</span></div>
+            <div class="level-ring"><div><strong>74%</strong><small>to Level 8</small></div></div>
+            <div class="level-copy"><span>LEVEL 7</span><strong>House Hero</strong><p>260 points to level up</p></div>
+          </section>
+
+          <section class="streak-card">
+            <div class="streak-top"><div class="streak-icon">🔥</div><div><p>CURRENT STREAK</p><strong>5 days</strong></div><span>Best: 12 days</span></div>
+            <div class="week" id="week-strip"></div>
+          </section>
+        </div>
+
+        <section class="panel chores-panel">
+          <div class="panel-head"><div><h2 id="chore-heading">Today’s chores</h2><p id="chore-subheading">You’ve got this! Knock these out and earn your points.</p></div><button class="text-button" data-view-jump="chores">View all →</button></div>
+          <div class="tabs"><button class="active" data-filter="all">All <span id="all-count">4</span></button><button data-filter="todo">To do</button><button data-filter="pending">Pending</button><button data-filter="done">Completed</button></div>
+          <div class="chore-list" id="chore-list"></div>
+        </section>
+
+        <div class="lower-grid">
+          <section class="panel reward-panel">
+            <div class="panel-head"><div><p class="eyebrow">NEXT REWARD</p><h2>Movie night pick 🎬</h2></div><button class="more">•••</button></div>
+            <div class="reward-progress"><div><span id="reward-current">740</span> / 1,000 points</div><div class="progress"><i id="reward-bar"></i></div><small>Just <b id="points-needed">260 points</b> to go!</small></div>
+            <button class="outline" data-view-jump="rewards">View all rewards</button>
+          </section>
+          <section class="panel activity-panel">
+            <div class="panel-head"><div><p class="eyebrow">FAMILY ACTIVITY</p><h2>What’s happening</h2></div><button class="text-button">See all →</button></div>
+            <div id="activity-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="chore-modal">
+    <form method="dialog" id="chore-form">
+      <button class="modal-close" value="cancel" aria-label="Close">×</button>
+      <p class="eyebrow">NEW CHORE</p><h2>Add something to do</h2>
+      <label>Chore name<input id="chore-name" placeholder="e.g. Water the plants" required /></label>
+      <div class="form-row"><label>Category<select id="chore-category"><option value="home">Home</option><option value="kitchen">Kitchen</option><option value="school">School</option><option value="outdoor">Outdoor</option></select></label><label>Points<input id="chore-points" type="number" min="1" max="100" value="20" required /></label></div>
+      <p class="form-note" id="points-note">Student-added chores earn half points until a parent verifies them.</p>
+      <button class="primary full" value="default">Add chore</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
