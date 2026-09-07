@@ -1,3 +1,46 @@
+## ChoreQuest Backlog
+
+The main goal is to make ChoreQuest feel fun and rewarding while still being simple and easy to use. We can take inspiration from Habitica and Todoist, but give it its own more relaxed and colorful style.
+
+High Priority
+Make every button and navigation page actually work.
+Give the parent and student sides different layouts and features.
+Let parents create, edit, assign, and approve chores.
+Let students complete chores and see if they are pending or approved.
+Make points, XP, levels, progress bars, and streaks update properly.
+Create a rewards shop where parents add rewards and students redeem them with points.
+Fix the date so it always shows the actual current date.
+Save chores, rewards, progress, and settings after refreshing.
+Make the website work well on phones and computers.
+
+Design Improvements
+Give the app a more polished pastel-green and cream design.
+Add Light, Dark Forest, Midnight, and Ocean themes.
+Add optional animated backgrounds, like stars or fish and moving kelp.
+Improve hover effects, transitions, empty states, and success messages.
+Make navigation clearer and keep the dashboard from feeling crowded.
+Make the parent dashboard more compact and management-focused.
+Keep the student dashboard more playful and encouraging.
+
+Extra Ideas
+Add achievements and badges for things like streaks and completing certain types of chores.
+Add recurring chores and reminders.
+Let students choose a reward to work toward.
+Make the diamond icon show points, XP, and recent progress when clicked.
+Add “Quest Paths” that divide larger chores into smaller steps.
+Add a shared Family Garden that grows as the family completes chores.
+Let students suggest chores or rewards for parent approval.
+Add a weekly progress recap for parents and students
+
+Build Order
+Fix the existing buttons, navigation, and dates.
+Finish the chore and approval system.
+Make points, levels, and streaks work.
+Add the rewards shop.
+Improve the parent and student dashboards.
+Add themes, animations, achievements, and extra features.
+
+
 # ChoreQuest
 
 A family chore and rewards app with distinct student and parent experiences, transactional points/XP, approval workflows, reward goals, local-timezone streaks, notifications, activity, and four themes. The original prototype is preserved in `legacy-*` files. See [Product Design](docs/product-design.md) and [System Design](docs/system-design.md).
