@@ -2,7 +2,7 @@
 
 The main goal is to make ChoreQuest feel fun and rewarding while still being simple and easy to use. We can take inspiration from Habitica and Todoist, but give it its own more relaxed and colorful style.
 
-High Priority
+**High Priority:**
 Make every button and navigation page actually work.
 Give the parent and student sides different layouts and features.
 Let parents create, edit, assign, and approve chores.
@@ -13,7 +13,7 @@ Fix the date so it always shows the actual current date.
 Save chores, rewards, progress, and settings after refreshing.
 Make the website work well on phones and computers.
 
-Design Improvements
+**Design Improvements:**
 Give the app a more polished pastel-green and cream design.
 Add Light, Dark Forest, Midnight, and Ocean themes.
 Add optional animated backgrounds, like stars or fish and moving kelp.
@@ -22,7 +22,7 @@ Make navigation clearer and keep the dashboard from feeling crowded.
 Make the parent dashboard more compact and management-focused.
 Keep the student dashboard more playful and encouraging.
 
-Extra Ideas
+**Extra Ideas:**
 Add achievements and badges for things like streaks and completing certain types of chores.
 Add recurring chores and reminders.
 Let students choose a reward to work toward.
@@ -32,7 +32,7 @@ Add a shared Family Garden that grows as the family completes chores.
 Let students suggest chores or rewards for parent approval.
 Add a weekly progress recap for parents and students
 
-Build Order
+**Build Order:**
 Fix the existing buttons, navigation, and dates.
 Finish the chore and approval system.
 Make points, levels, and streaks work.
