@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { sql, id } from "./postgres.ts";
 import {
+  accountProfileSchema,
   childSchema,
   childUpdateSchema,
   choreBulkSchema,
@@ -11,6 +12,7 @@ import {
   choreUpdateSchema,
   decisionSchema,
   loginSchema,
+  passwordChangeSchema,
   preferencesSchema,
   registerSchema,
   rewardSchema,
@@ -212,7 +214,7 @@ app.get("/api/dashboard", async (req, res) => {
   if (!current) return;
   const t = await totals(current.id);
   const [profile] =
-    await sql`SELECT u.timezone,COALESCE(p.theme,'garden') theme,COALESCE(p.animation,true) animation FROM users u LEFT JOIN preferences p ON p.user_id=u.id WHERE u.id=${current.id}`;
+    await sql`SELECT u.email,u.timezone,COALESCE(p.theme,'garden') theme,COALESCE(p.animation,true) animation FROM users u LEFT JOIN preferences p ON p.user_id=u.id WHERE u.id=${current.id}`;
   const dates = (
     await sql`SELECT local_date::text FROM daily_activity WHERE student_id=${current.id} ORDER BY local_date DESC`
   ).map((x) => x.local_date);
@@ -239,6 +241,7 @@ app.get("/api/dashboard", async (req, res) => {
       user: {
         id: current.id,
         name: current.name,
+        email: current.role === "parent" ? profile.email : undefined,
         role: current.role,
         ...t,
         level: levelFromXp(t.xp),
@@ -524,6 +527,12 @@ app.delete("/api/notifications/:id", async (req, res) => {
     return fail(res, 404, "NOT_FOUND", "Notification not found.");
   res.json({ data: { ok: true } });
 });
+app.put("/api/notifications/read", async (req, res) => {
+  const current = user(req, res);
+  if (!current) return;
+  await sql`UPDATE notifications SET read_at=now() WHERE user_id=${current.id} AND read_at IS NULL`;
+  res.json({ data: { ok: true } });
+});
 app.delete("/api/notifications", async (req, res) => {
   const current = user(req, res);
   if (!current) return;
@@ -537,6 +546,38 @@ app.put("/api/preferences", async (req, res) => {
   if (!current || !body) return;
   await sql`INSERT INTO preferences ${sql({ user_id: current.id, theme: body.theme, animation: body.animation, reduced_motion: body.reducedMotion, sound: body.sound })} ON CONFLICT(user_id) DO UPDATE SET theme=excluded.theme,animation=excluded.animation,reduced_motion=excluded.reduced_motion,sound=excluded.sound`;
   res.json({ data: body });
+});
+
+app.put("/api/account/profile", async (req, res) => {
+  const current = role(req, res, "parent"),
+    body = parse(accountProfileSchema, req.body, res);
+  if (!current || !body) return;
+  const email = body.email.toLowerCase();
+  if (
+    (
+      await sql`SELECT 1 FROM users WHERE lower(email)=${email} AND id<>${current.id} LIMIT 1`
+    )[0]
+  )
+    return fail(res, 409, "EMAIL_TAKEN", "That email is already in use.");
+  await sql`UPDATE users SET name=${body.name},email=${email} WHERE id=${current.id}`;
+  res.json({ data: { name: body.name, email } });
+});
+
+app.put("/api/account/password", async (req, res) => {
+  const current = role(req, res, "parent"),
+    body = parse(passwordChangeSchema, req.body, res);
+  if (!current || !body) return;
+  const [found] =
+    await sql`SELECT password_hash FROM users WHERE id=${current.id}`;
+  if (!found || !verifyPassword(body.currentPassword, found.password_hash))
+    return fail(
+      res,
+      400,
+      "INVALID_PASSWORD",
+      "Your current password is incorrect.",
+    );
+  await sql`UPDATE users SET password_hash=${encodePassword(body.newPassword)} WHERE id=${current.id}`;
+  res.json({ data: { ok: true } });
 });
 
 app.use(express.static(path.resolve("dist/client")));

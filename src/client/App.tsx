@@ -49,6 +49,7 @@ const parent = [
   ["rewards", "Rewards Management", Store],
   ["family", "Family Management", Users],
   ["reports", "Reports / Activity", BarChart3],
+  ["notifications", "Notifications", Bell],
   ["settings", "Settings", Settings],
 ] as const;
 const icons: Record<string, string> = {
@@ -75,7 +76,8 @@ export default function App() {
     [auth, setAuth] = useState(false),
     [loading, setLoading] = useState(true);
   const [menu, setMenu] = useState(false),
-    [toast, setToast] = useState("");
+    [toast, setToast] = useState(""),
+    [toastId, setToastId] = useState(0);
   const navigate = useNavigate();
   const load = async () => {
     try {
@@ -95,9 +97,11 @@ export default function App() {
     try {
       await f();
       setToast(ok);
+      setToastId((id) => id + 1);
       await load();
     } catch (e) {
       setToast((e as Error).message);
+      setToastId((id) => id + 1);
     }
   };
   const signedIn = async () => {
@@ -118,7 +122,13 @@ export default function App() {
     );
   if (auth || !data) return <AuthScreen done={signedIn} />;
   const role = data.user.role,
-    nav = role === "student" ? student : parent;
+    nav = role === "student" ? student : parent,
+    unreadCount = data.notifications.filter((notice) => !notice.read).length,
+    changesCount = data.chores.filter((chore) => chore.status === "changes_requested").length;
+  const markNotificationsRead = () => {
+    setData((current) => current ? { ...current, notifications: current.notifications.map((notice) => ({ ...notice, read: true })) } : current);
+    void api("/notifications/read", { method: "PUT" });
+  };
   const signOut = async () => {
     await api("/auth/logout", { method: "POST" });
     setData(undefined);
@@ -164,6 +174,9 @@ export default function App() {
                 {l === "Approvals" && data.pendingCount ? (
                   <b>{data.pendingCount}</b>
                 ) : null}
+                {l === "My Chores" && changesCount ? <b>{changesCount}</b> : null}
+                {l === "Notifications" && unreadCount ? <b>{unreadCount}</b> : null}
+                {l === "Rewards Management" && !data.rewards.length ? <b>!</b> : null}
               </NavLink>
             ))}
           </nav>
@@ -207,6 +220,7 @@ export default function App() {
                 to={`/${role}/notifications`}
               >
                 <Bell />
+                {unreadCount ? <b className="notification-ping">{unreadCount}</b> : null}
               </NavLink>
               <span className="avatar">
                 {data.user.name
@@ -242,7 +256,7 @@ export default function App() {
               />
               <Route
                 path="/student/notifications"
-                element={<Notifications d={data} />}
+                element={<Notifications d={data} onRead={markNotificationsRead} />}
               />
               <Route
                 path="/student/settings"
@@ -268,7 +282,7 @@ export default function App() {
               <Route path="/parent/reports" element={<Reports d={data} />} />
               <Route
                 path="/parent/notifications"
-                element={<Notifications d={data} />}
+                element={<Notifications d={data} onRead={markNotificationsRead} />}
               />
               <Route
                 path="/parent/settings"
@@ -279,7 +293,11 @@ export default function App() {
           </div>
         </main>
       </div>
-      <div className={toast ? "toast show" : "toast"} role="status">
+      <div
+        key={toastId}
+        className={toast ? "toast show" : "toast"}
+        role="status"
+      >
         {toast}
       </div>
     </div>
@@ -757,12 +775,12 @@ function Section({
     </section>
   );
 }
-function Empty({ title }: { title: string }) {
+function Empty({ title, copy = "Nothing needs attention here right now." }: { title: string; copy?: string }) {
   return (
     <div className="empty">
       <Sparkles />
       <strong>{title}</strong>
-      <p>Nothing needs attention here right now.</p>
+      <p>{copy}</p>
     </div>
   );
 }
@@ -820,7 +838,9 @@ function StudentChores({ d, act }: { d: DashboardData; act: Act }) {
                   method: "POST",
                   body: JSON.stringify({ note, proofUrl: proof || undefined }),
                 }),
-              "Chore submitted!",
+              chosen.requiresApproval
+                ? "Submitted for parent verification."
+                : "Chore completed!",
             )
           }
         />
@@ -926,7 +946,7 @@ function Rewards({ d, act }: { d: DashboardData; act: Act }) {
         copy="Choose a goal or redeem when you have enough."
       />
       <div className="rewards">
-        {d.rewards
+        {d.rewards.filter((r) => r.enabled).length ? d.rewards
           .filter((r) => r.enabled)
           .map((r) => (
             <RewardCard
@@ -951,7 +971,7 @@ function Rewards({ d, act }: { d: DashboardData; act: Act }) {
                 )
               }
             />
-          ))}
+          )) : <Empty title="No rewards yet" copy="Looks like your parent hasn't added any rewards yet. Ask them to add something fun to work toward!" />}
       </div>
     </>
   );
@@ -1649,7 +1669,7 @@ function ParentRewards({ d, act }: { d: DashboardData; act: Act }) {
         </button>
       </Title>
       <div className="manage-grid">
-        {d.rewards.map((r) => (
+        {d.rewards.length ? d.rewards.map((r) => (
           <article className="manage-card" key={r.id}>
             <span>{r.icon}</span>
             <div>
@@ -1664,7 +1684,7 @@ function ParentRewards({ d, act }: { d: DashboardData; act: Act }) {
               Edit
             </button>
           </article>
-        ))}
+        )) : <Empty title="Add their first reward" copy="Give your kid something exciting to work toward." />}
       </div>
       {open || editing ? (
         <RewardForm
@@ -2005,8 +2025,11 @@ function ChildEdit({
     </div>
   );
 }
-function Notifications({ d }: { d: DashboardData }) {
+function Notifications({ d, onRead }: { d: DashboardData; onRead: () => void }) {
   const [items, setItems] = useState(d.notifications);
+  // Opening the inbox counts as reading the current notifications.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => onRead(), []);
   const remove = async (id?: string) => {
     await api(id ? `/notifications/${id}` : "/notifications", {
       method: "DELETE",
@@ -2091,6 +2114,47 @@ function Reports({ d }: { d: DashboardData }) {
     </>
   );
 }
+function AccountSettings({ d, act }: { d: DashboardData; act: Act }) {
+  const [showPasswords, setShowPasswords] = useState(false);
+  return (
+    <div className="settings-grid">
+      <Section title="Account" copy="Update your parent profile.">
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          void act(() => api("/account/profile", { method: "PUT", body: JSON.stringify({ name: form.get("name"), email: form.get("email") }) }), "Account updated.");
+        }}>
+          <label>Name<input name="name" required minLength={2} defaultValue={d.user.name} autoComplete="name" /></label>
+          <label>Email<input name="email" type="email" required defaultValue={d.user.email} autoComplete="email" /></label>
+          <button className="button primary">Save account</button>
+        </form>
+      </Section>
+      <Section title="Password" copy="Use at least 8 characters.">
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const next = String(form.get("newPassword"));
+          const confirm = String(form.get("confirmPassword"));
+          if (next !== confirm) {
+            void act(() => Promise.reject(new Error("New passwords do not match.")), "");
+            return;
+          }
+          void act(() => api("/account/password", { method: "PUT", body: JSON.stringify({ currentPassword: form.get("currentPassword"), newPassword: next }) }), "Password changed.");
+        }}>
+          <label>Current password<input name="currentPassword" type={showPasswords ? "text" : "password"} required autoComplete="current-password" /></label>
+          <div className="form-grid">
+            <label>New password<input name="newPassword" type={showPasswords ? "text" : "password"} required minLength={8} autoComplete="new-password" /></label>
+            <label>Confirm password<input name="confirmPassword" type={showPasswords ? "text" : "password"} required minLength={8} autoComplete="new-password" /></label>
+          </div>
+          <button className="account-password-toggle" type="button" onClick={() => setShowPasswords((value) => !value)}>
+            {showPasswords ? <EyeOff /> : <Eye />} {showPasswords ? "Hide passwords" : "Show passwords"}
+          </button>
+          <button className="button primary">Change password</button>
+        </form>
+      </Section>
+    </div>
+  );
+}
 function Prefs({ d, act }: { d: DashboardData; act: Act }) {
   const choose = (theme: Theme) =>
     void act(
@@ -2112,7 +2176,7 @@ function Prefs({ d, act }: { d: DashboardData; act: Act }) {
           {(
             [
               ["garden", "Light Garden"],
-              ["forest", "Dark Forest"],
+              ["forest", "Dark Green"],
               ["midnight", "Midnight"],
               ["ocean", "Ocean"],
             ] as [Theme, string][]
@@ -2140,6 +2204,7 @@ function Prefs({ d, act }: { d: DashboardData; act: Act }) {
           ))}
         </div>
       </Section>
+      {d.user.role === "parent" ? <AccountSettings d={d} act={act} /> : null}
     </>
   );
 }

@@ -10,6 +10,7 @@ export type Theme = "garden" | "forest" | "midnight" | "ocean";
 export interface UserSummary {
   id: string;
   name: string;
+  email?: string;
   role: Role;
   points: number;
   xp: number;

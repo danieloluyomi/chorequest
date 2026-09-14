@@ -66,6 +66,14 @@ export const loginSchema = z.object({
   email: z.string().trim().email().max(200),
   password: z.string().min(1).max(128),
 });
+export const accountProfileSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().email().max(200),
+});
+export const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8).max(128),
+});
 const childProfile = {
   name: z.string().trim().min(2).max(80),
   age: z.number().int().min(3).max(21).optional(),

@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { db, id, now } from "./db.ts";
 import {
+  accountProfileSchema,
   childSchema,
   childUpdateSchema,
   choreBulkSchema,
@@ -12,6 +13,7 @@ import {
   decisionSchema,
   invitationSchema,
   loginSchema,
+  passwordChangeSchema,
   preferencesSchema,
   registerSchema,
   reversalSchema,
@@ -286,11 +288,13 @@ app.get("/api/dashboard", (req, res) => {
       )
       .all(user.id) as { local_date: string }[]
   ).map((x) => x.local_date);
-  const timezone = (
-    db.prepare("SELECT timezone FROM users WHERE id=?").get(user.id) as {
+  const account = (
+    db.prepare("SELECT email,timezone FROM users WHERE id=?").get(user.id) as {
+      email: string;
       timezone: string;
     }
-  ).timezone;
+  );
+  const timezone = account.timezone;
   const pref = db
     .prepare("SELECT * FROM preferences WHERE user_id=?")
     .get(user.id) as Record<string, string | number>;
@@ -374,6 +378,7 @@ app.get("/api/dashboard", (req, res) => {
       user: {
         id: user.id,
         name: user.name,
+        email: user.role === "parent" ? account.email : undefined,
         role: user.role,
         points,
         xp,
@@ -1172,6 +1177,15 @@ app.delete("/api/notifications/:id", (req, res) => {
       });
   res.json({ data: { ok: true } });
 });
+app.put("/api/notifications/read", (req, res) => {
+  const current = requireUser(req, res);
+  if (!current) return;
+  db.prepare("UPDATE notifications SET read_at=? WHERE user_id=? AND read_at IS NULL").run(
+    new Date().toISOString(),
+    current.id,
+  );
+  res.json({ data: { ok: true } });
+});
 app.delete("/api/notifications", (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -1195,6 +1209,47 @@ app.put("/api/preferences", (req, res) => {
     Number(body.sound),
   );
   res.json({ data: body });
+});
+
+app.put("/api/account/profile", (req, res) => {
+  const current = requireRole(req, res, "parent"),
+    body = parse(accountProfileSchema, req.body, res);
+  if (!current || !body) return;
+  const email = body.email.toLowerCase();
+  const existing = db
+    .prepare("SELECT id FROM users WHERE lower(email)=? AND id<>?")
+    .get(email, current.id);
+  if (existing)
+    return res.status(409).json({
+      error: { code: "EMAIL_TAKEN", message: "That email is already in use." },
+    });
+  db.prepare("UPDATE users SET name=?,email=? WHERE id=?").run(
+    body.name,
+    email,
+    current.id,
+  );
+  res.json({ data: { name: body.name, email } });
+});
+
+app.put("/api/account/password", (req, res) => {
+  const current = requireRole(req, res, "parent"),
+    body = parse(passwordChangeSchema, req.body, res);
+  if (!current || !body) return;
+  const found = db
+    .prepare("SELECT password_hash FROM users WHERE id=?")
+    .get(current.id) as { password_hash: string };
+  if (!verifyPassword(body.currentPassword, found.password_hash))
+    return res.status(400).json({
+      error: {
+        code: "INVALID_PASSWORD",
+        message: "Your current password is incorrect.",
+      },
+    });
+  db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(
+    encodePassword(body.newPassword),
+    current.id,
+  );
+  res.json({ data: { ok: true } });
 });
 app.use(express.static(path.resolve("dist/client")));
 app.get("/{*splat}", (_req, res) =>
