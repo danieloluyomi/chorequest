@@ -16,6 +16,10 @@ export default async function handler(request: Request, response: Response) {
       error: {
         code: category,
         message: "The ChoreQuest server is not configured correctly yet.",
+        diagnostic:
+          category === "MODULE_LOAD_FAILED"
+            ? message.replaceAll(process.cwd(), "<app>")
+            : undefined,
       },
     });
   }
