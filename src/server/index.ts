@@ -1,1 +1,1 @@
-import app from './app.ts';const port=Number(process.env.PORT??3001);app.listen(port,()=>console.log(`ChoreQuest running at http://localhost:${port}`));
+import app from './app.ts';import{db,migrate}from'./db.ts';import{seed}from'./seed.ts';migrate();if(!db.prepare('SELECT 1 FROM users LIMIT 1').get())seed();const port=Number(process.env.PORT??3001);app.listen(port,()=>console.log(`ChoreQuest running at http://localhost:${port}`));

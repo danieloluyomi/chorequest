@@ -1,0 +1,9 @@
+{
+  "files.exclude": {
+    "**/.tools": true,
+    "**/data": true,
+    "**/dist": true,
+    "**/node_modules": true,
+    "**/*.tsbuildinfo": true
+  }
+}
