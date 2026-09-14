@@ -3,7 +3,7 @@
   "buildCommand": "npm run db:migrate:postgres && npm run build",
   "outputDirectory": "dist/client",
   "functions": {
-    "api/index.ts": { "maxDuration": 30 }
+    "api/index.mjs": { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
