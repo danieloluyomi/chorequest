@@ -48,7 +48,15 @@ npm run verify
 
 ## Deployment
 
-GitHub Pages is intentionally disabled because it cannot run the Express API or SQLite database. The current full-stack build should be run on a Node host with persistent storage. A Vercel deployment requires the planned SQLite-to-Supabase Postgres migration first; do not upload the raw source folder as a Pages artifact.
+Production uses Vercel and Supabase Postgres. Connect the Supabase integration to the Vercel project so `POSTGRES_URL` is available, then deploy `main`. Vercel runs the idempotent Postgres migration during its build and routes `/api/*` to the Express function in `api/index.ts`. It never seeds or deletes production data.
+
+For a manual production migration:
+
+```bash
+npm run db:migrate:postgres
+```
+
+Local development and its automated tests continue to use SQLite, so contributors do not need cloud credentials. GitHub Pages is intentionally disabled because it cannot run the API.
 
 ## Current limitation
 

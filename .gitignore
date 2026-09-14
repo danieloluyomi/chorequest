@@ -5,3 +5,4 @@ data/
 .env
 *.log
 *.tsbuildinfo
+.npm-cache/
