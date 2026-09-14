@@ -184,6 +184,11 @@ dialog { animation: dialog-enter .28s cubic-bezier(.16,1,.3,1) both; }
 .auth-card form .button { width: 100%; margin-top: 8px; }
 .auth-card .text-button { display: block; margin: 17px auto 0; }
 .auth-error { padding: 10px 12px; border-radius: 9px; background: #fff0ee; color: #a23f34; font-size: 11px; }
+.password-field { position: relative; display: block; }
+.password-field input { width: 100%; padding-right: 44px; }
+.password-toggle { position: absolute; top: 50%; right: 10px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; transform: translateY(-50%); border: 0; border-radius: 8px; background: transparent; color: #61776d; cursor: pointer; }
+.password-toggle:hover { background: #eaf2ed; color: #1f6f56; }
+.password-toggle:focus-visible { outline: 2px solid #69b891; outline-offset: 1px; }
 .demo-divider { display: flex; align-items: center; gap: 10px; margin: 23px 0 12px; color: #8a9a93; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
 .demo-divider::before,.demo-divider::after { content: ''; height: 1px; flex: 1; background: #e1e9e4; }
 .demo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

@@ -15,6 +15,8 @@ import {
   Coins,
   Gift,
   Home,
+  Eye,
+  EyeOff,
   Menu,
   Pencil,
   Plus,
@@ -288,6 +290,7 @@ function AuthScreen({ done }: { done: () => Promise<void> }) {
       "register",
     ),
     [error, setError] = useState(""),
+    [showPassword, setShowPassword] = useState(false),
     [busy, setBusy] = useState(false);
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -430,15 +433,26 @@ function AuthScreen({ done }: { done: () => Promise<void> }) {
                 </label>
                 <label>
                   Password
-                  <input
-                    name="password"
-                    type="password"
-                    required
-                    minLength={mode === "register" ? 8 : 1}
-                    autoComplete={
-                      mode === "register" ? "new-password" : "current-password"
-                    }
-                  />
+                  <span className="password-field">
+                    <input
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      minLength={mode === "register" ? 8 : 1}
+                      autoComplete={
+                        mode === "register" ? "new-password" : "current-password"
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle"
+                      onClick={() => setShowPassword((shown) => !shown)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
+                    >
+                      {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    </button>
+                  </span>
                 </label>
               </>
             )}
