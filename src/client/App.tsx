@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   NavLink,
   Navigate,
@@ -54,12 +54,30 @@ const parent = [
 ] as const;
 const icons: Record<string, string> = {
   bedroom: "🛏️",
+  other_bedrooms: "🧺",
+  bathroom: "🫧",
   kitchen: "🍽️",
+  attic: "📦",
+  basement: "🧹",
   school: "📚",
   pets: "🐾",
   outdoors: "🌿",
   family: "🏡",
 };
+const ROOM_OPTIONS = [
+  ["bedroom", "Kid's bedroom"],
+  ["other_bedrooms", "Other bedrooms"],
+  ["bathroom", "Bathroom"],
+  ["kitchen", "Kitchen"],
+  ["attic", "Attic"],
+  ["basement", "Basement"],
+  ["outdoors", "Outside"],
+] as const;
+const savedRooms = (userId: string) => {
+  try { return JSON.parse(localStorage.getItem(`cq-rooms:${userId}`) ?? "[]") as string[]; }
+  catch { return []; }
+};
+const avatarFor = (userId: string) => localStorage.getItem(`cq-avatar:${userId}`);
 const fmt = (v: string) =>
   new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -79,6 +97,7 @@ export default function App() {
     [toast, setToast] = useState(""),
     [toastId, setToastId] = useState(0);
   const navigate = useNavigate();
+  const knownNotices = useRef<Set<string> | null>(null);
   const load = async () => {
     try {
       setData(await getDashboard());
@@ -93,6 +112,22 @@ export default function App() {
   useEffect(() => {
     void load();
   }, []);
+  useEffect(() => {
+    if (!data) return;
+    knownNotices.current = new Set(data.notifications.map((notice) => notice.id));
+    const timer = window.setInterval(() => {
+      void getDashboard().then((fresh) => {
+        const incoming = fresh.notifications.find((notice) => !notice.read && !knownNotices.current?.has(notice.id));
+        knownNotices.current = new Set(fresh.notifications.map((notice) => notice.id));
+        if (incoming) {
+          setToast(`${incoming.title}: ${incoming.body}`);
+          setToastId((id) => id + 1);
+        }
+        setData(fresh);
+      }).catch(() => undefined);
+    }, 8000);
+    return () => window.clearInterval(timer);
+  }, [data]);
   const act = async (f: () => Promise<unknown>, ok: string) => {
     try {
       await f();
@@ -181,7 +216,7 @@ export default function App() {
             ))}
           </nav>
           <div className="tip">
-            <Sparkles />
+            <img className="tip-mascot" src={role === "student" ? (data.user.streak > 1 ? "/mascot/fire-eyes.png" : "/mascot/weights.png") : "/mascot/analyze.png"} alt="" />
             <strong>
               {role === "student" ? "Keep the streak!" : "Family pulse"}
             </strong>
@@ -223,7 +258,7 @@ export default function App() {
                 {unreadCount ? <b className="notification-ping">{unreadCount}</b> : null}
               </NavLink>
               <span className="avatar">
-                {data.user.name
+                {avatarFor(data.user.id) ? <img src={avatarFor(data.user.id)!} alt="" /> : data.user.name
                   .split(" ")
                   .map((x) => x[0])
                   .join("")}
@@ -249,7 +284,7 @@ export default function App() {
                 path="/student/rewards"
                 element={<Rewards d={data} act={act} />}
               />
-              <Route path="/student/achievements" element={<Achievements />} />
+              <Route path="/student/achievements" element={<Achievements d={data} />} />
               <Route
                 path="/student/family"
                 element={<Family d={data} act={act} />}
@@ -552,7 +587,7 @@ function Status({ s }: { s: string }) {
   return <span className={`status ${s}`}>{s.replace("_", " ")}</span>;
 }
 function List({ items, open }: { items: Chore[]; open?: (c: Chore) => void }) {
-  if (!items.length) return <Empty title="All clear!" />;
+  if (!items.length) return <Empty title="All clear!" image="/mascot/hammock.png" />;
   return (
     <div className="chore-list">
       {items.map((c) => (
@@ -592,9 +627,9 @@ function StudentHome({ d }: { d: DashboardData }) {
         })
           .format(new Date())
           .toUpperCase()}
-        title={`Hey, ${d.user.name.split(" ")[0]}! 👋`}
+        title={`Hey, ${d.user.name.split(" ")[0]}!`}
         copy="Ready to earn some points today?"
-      />
+      ><img className="title-mascot" src="/mascot/wave.png" alt="ChoreQuest dog waving" /></Title>
       <div className="hero-grid">
         <section className="points">
           <p className="eyebrow">YOUR PROGRESS</p>
@@ -607,8 +642,8 @@ function StudentHome({ d }: { d: DashboardData }) {
           </span>
           <Progress value={p.percent} />
         </section>
-        <section className="streak">
-          <b>🔥</b>
+        <section className="streak mascot-card">
+          <img src={d.user.streak > 1 ? "/mascot/fire-eyes.png" : "/mascot/weights.png"} alt="ChoreQuest streak mascot" />
           <div>
             <p className="eyebrow">CURRENT STREAK</p>
             <strong>{d.user.streak} days</strong>
@@ -629,6 +664,7 @@ function StudentHome({ d }: { d: DashboardData }) {
         >
           {goal ? (
             <>
+              <img className="goal-mascot" src="/mascot/flex.png" alt="ChoreQuest dog celebrating a reward goal" />
               <h3>
                 {goal.icon} {goal.name}
               </h3>
@@ -638,7 +674,7 @@ function StudentHome({ d }: { d: DashboardData }) {
               </p>
             </>
           ) : (
-            <Empty title="Choose a reward goal" />
+            <Empty title="Choose a reward goal" image="/mascot/rocket.png" />
           )}
         </Section>
         <Activity d={d} />
@@ -653,7 +689,8 @@ function ParentHome({ d }: { d: DashboardData }) {
         over="FAMILY OVERVIEW"
         title={`Good ${new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}, ${d.user.name.split(" ")[0]}`}
         copy="Here’s what needs attention across your family today."
-      />
+      ><img className="title-mascot" src="/mascot/analyze.png" alt="ChoreQuest dog reviewing a checklist" /></Title>
+      {!savedRooms(d.user.id).length ? <div className="setup-banner"><b>Choose your chore rooms</b><span>Set which parts of the home should appear in guided suggestions.</span><NavLink className="button secondary" to="/parent/settings">Choose rooms</NavLink></div> : null}
       <div className="command-strip">
         <NavLink to="/parent/chores">
           <Plus />
@@ -717,7 +754,7 @@ function ParentHome({ d }: { d: DashboardData }) {
           <div className="people">
             {d.children.map((c) => (
               <article key={c.id}>
-                <span className="avatar">{c.name[0]}</span>
+                <span className="avatar">{avatarFor(c.id) ? <img src={avatarFor(c.id)!} alt="" /> : c.name[0]}</span>
                 <div>
                   <h3>{c.name}</h3>
                   <p>
@@ -775,10 +812,10 @@ function Section({
     </section>
   );
 }
-function Empty({ title, copy = "Nothing needs attention here right now." }: { title: string; copy?: string }) {
+function Empty({ title, copy = "Nothing needs attention here right now.", image }: { title: string; copy?: string; image?: string }) {
   return (
     <div className="empty">
-      <Sparkles />
+      {image ? <img className="empty-mascot" src={image} alt="" /> : <Sparkles />}
       <strong>{title}</strong>
       <p>{copy}</p>
     </div>
@@ -971,7 +1008,7 @@ function Rewards({ d, act }: { d: DashboardData; act: Act }) {
                 )
               }
             />
-          )) : <Empty title="No rewards yet" copy="Looks like your parent hasn't added any rewards yet. Ask them to add something fun to work toward!" />}
+          )) : <Empty image="/mascot/empty-gift.png" title="No rewards yet" copy="Looks like your parent hasn't added any rewards for you! Talk to them about adding something fun to work toward." />}
       </div>
     </>
   );
@@ -989,6 +1026,7 @@ function RewardCard({
 }) {
   return (
     <article className={r.goal ? "reward goal" : "reward"}>
+      {r.goal ? <img className="reward-mascot" src="/mascot/rocket.png" alt="ChoreQuest dog rocketing toward a goal" /> : null}
       <span>{r.icon}</span>
       {r.goal ? <i>Active goal</i> : null}
       <h2>{r.name}</h2>
@@ -1423,49 +1461,29 @@ function ChoreForm({
   );
 }
 const choreIdeas = [
-  {
-    title: "Make the bed",
-    category: "bedroom",
-    difficulty: "easy",
-    points: 15,
-  },
-  {
-    title: "Put clothes away",
-    category: "bedroom",
-    difficulty: "easy",
-    points: 20,
-  },
-  {
-    title: "Load the dishwasher",
-    category: "kitchen",
-    difficulty: "medium",
-    points: 30,
-  },
-  {
-    title: "Wipe kitchen counters",
-    category: "kitchen",
-    difficulty: "easy",
-    points: 20,
-  },
-  { title: "Feed the pet", category: "pets", difficulty: "easy", points: 15 },
-  {
-    title: "Take out recycling",
-    category: "outdoors",
-    difficulty: "medium",
-    points: 25,
-  },
-  {
-    title: "Tidy homework space",
-    category: "school",
-    difficulty: "easy",
-    points: 20,
-  },
-  {
-    title: "Vacuum one room",
-    category: "family",
-    difficulty: "medium",
-    points: 35,
-  },
+  { title: "Make the bed", category: "bedroom", difficulty: "easy", points: 15, minAge: 4 },
+  { title: "Put toys in their bins", category: "bedroom", difficulty: "easy", points: 15, minAge: 4 },
+  { title: "Put clothes in the hamper", category: "bedroom", difficulty: "easy", points: 15, minAge: 4 },
+  { title: "Fold and put away clothes", category: "bedroom", difficulty: "medium", points: 30, minAge: 8 },
+  { title: "Straighten pillows and blankets", category: "other_bedrooms", difficulty: "easy", points: 15, minAge: 5 },
+  { title: "Dust bedroom surfaces", category: "other_bedrooms", difficulty: "medium", points: 25, minAge: 7 },
+  { title: "Put bathroom towels away", category: "bathroom", difficulty: "easy", points: 20, minAge: 5 },
+  { title: "Wipe the bathroom sink", category: "bathroom", difficulty: "easy", points: 20, minAge: 6 },
+  { title: "Restock toilet paper", category: "bathroom", difficulty: "easy", points: 15, minAge: 6 },
+  { title: "Clean the bathroom mirror", category: "bathroom", difficulty: "medium", points: 30, minAge: 8 },
+  { title: "Scrub the bathtub", category: "bathroom", difficulty: "hard", points: 50, minAge: 12 },
+  { title: "Set the table", category: "kitchen", difficulty: "easy", points: 15, minAge: 4 },
+  { title: "Wipe kitchen counters", category: "kitchen", difficulty: "easy", points: 20, minAge: 6 },
+  { title: "Unload safe dishwasher items", category: "kitchen", difficulty: "medium", points: 30, minAge: 7 },
+  { title: "Sweep the kitchen floor", category: "kitchen", difficulty: "medium", points: 30, minAge: 8 },
+  { title: "Sort one attic box", category: "attic", difficulty: "medium", points: 35, minAge: 10 },
+  { title: "Carry light storage items", category: "attic", difficulty: "medium", points: 30, minAge: 9 },
+  { title: "Sweep the basement", category: "basement", difficulty: "medium", points: 35, minAge: 9 },
+  { title: "Organize basement games", category: "basement", difficulty: "easy", points: 25, minAge: 6 },
+  { title: "Pick up sticks outside", category: "outdoors", difficulty: "easy", points: 20, minAge: 5 },
+  { title: "Water outdoor plants", category: "outdoors", difficulty: "easy", points: 20, minAge: 5 },
+  { title: "Take out recycling", category: "outdoors", difficulty: "medium", points: 30, minAge: 8 },
+  { title: "Rake a small area", category: "outdoors", difficulty: "hard", points: 45, minAge: 10 },
 ];
 function ChoreIdeas({
   d,
@@ -1477,15 +1495,12 @@ function ChoreIdeas({
   act: Act;
 }) {
   const [childId, setChildId] = useState(d.children[0]?.id ?? ""),
-    [rooms, setRooms] = useState("bedroom,kitchen"),
+    [rooms, setRooms] = useState<string[]>(() => savedRooms(d.user.id).length ? savedRooms(d.user.id) : ["bedroom", "bathroom", "kitchen"]),
     [picked, setPicked] = useState<string[]>([]);
   const child = d.children.find((c) => c.id === childId),
     ideas = choreIdeas
-      .filter(
-        (x) =>
-          rooms.toLowerCase().includes(x.category) || x.category === "family",
-      )
-      .slice(0, 6);
+      .filter((x) => rooms.includes(x.category) && x.minAge <= (child?.age ?? 8))
+      .slice(0, 12);
   const add = () =>
     void act(
       () =>
@@ -1536,18 +1551,16 @@ function ChoreIdeas({
               ))}
             </select>
           </label>
-          <label>
-            Rooms
-            <input
-              value={rooms}
-              onChange={(e) => setRooms(e.target.value)}
-              placeholder="bedroom, kitchen"
-            />
+          <label>Rooms
+            <details className="multi-select">
+              <summary>{rooms.length ? `${rooms.length} selected` : "Choose rooms"}</summary>
+              <div>{ROOM_OPTIONS.map(([value, label]) => <label className="checkline" key={value}><input type="checkbox" checked={rooms.includes(value)} onChange={(event) => setRooms((current) => event.target.checked ? [...current, value] : current.filter((room) => room !== value))} />{label}</label>)}</div>
+            </details>
           </label>
         </div>
-        {child?.interests ? (
+        {child ? (
           <p className="notice">
-            Based on {child.name}'s profile: {child.interests}
+            Ideas for age {child.age ?? "not set"}{child.interests ? ` · ${child.interests}` : ""}
           </p>
         ) : null}
         <div className="idea-grid">
@@ -1572,6 +1585,7 @@ function ChoreIdeas({
               <small>{x.points} pts · weekly</small>
             </label>
           ))}
+          {!ideas.length ? <p className="notice">No ideas match yet. Select more rooms or add the child's age in Family Management.</p> : null}
         </div>
         <button
           className="button primary"
@@ -1655,7 +1669,8 @@ function Decision({
 }
 function ParentRewards({ d, act }: { d: DashboardData; act: Act }) {
   const [editing, setEditing] = useState<Reward | undefined>(),
-    [open, setOpen] = useState(false);
+    [open, setOpen] = useState(false),
+    [ideasOpen, setIdeasOpen] = useState(false);
   return (
     <>
       <Title
@@ -1663,10 +1678,7 @@ function ParentRewards({ d, act }: { d: DashboardData; act: Act }) {
         title="Rewards management"
         copy="Create rewards that feel worth working toward."
       >
-        <button className="button primary" onClick={() => setOpen(true)}>
-          <Plus />
-          New reward
-        </button>
+        <div className="actions"><button className="button secondary" onClick={() => setIdeasOpen(true)}><WandSparkles />Generate ideas</button><button className="button primary" onClick={() => setOpen(true)}><Plus />New reward</button></div>
       </Title>
       <div className="manage-grid">
         {d.rewards.length ? d.rewards.map((r) => (
@@ -1684,7 +1696,7 @@ function ParentRewards({ d, act }: { d: DashboardData; act: Act }) {
               Edit
             </button>
           </article>
-        )) : <Empty title="Add their first reward" copy="Give your kid something exciting to work toward." />}
+        )) : <Empty image="/mascot/rocket.png" title="Add their first reward" copy="Add rewards that motivate your kid and give them something exciting to work toward." />}
       </div>
       {open || editing ? (
         <RewardForm
@@ -1705,8 +1717,30 @@ function ParentRewards({ d, act }: { d: DashboardData; act: Act }) {
           }
         />
       ) : null}
+      {ideasOpen ? <RewardIdeas d={d} act={act} close={() => setIdeasOpen(false)} /> : null}
     </>
   );
+}
+const rewardIdeas = [
+  { icon: "🎨", name: "Choose tonight's activity", description: "Pick a favorite family activity.", cost: 120, minAge: 4 },
+  { icon: "🍿", name: "Movie night pick", description: "Choose the movie and snack.", cost: 180, minAge: 5 },
+  { icon: "🛝", name: "Special park trip", description: "Plan an extra trip to a favorite park.", cost: 220, minAge: 4 },
+  { icon: "🎮", name: "Extra game time", description: "Earn 30 minutes of game time.", cost: 250, minAge: 7 },
+  { icon: "🍕", name: "Choose dinner", description: "Pick one family dinner this week.", cost: 300, minAge: 6 },
+  { icon: "🛍️", name: "Small surprise", description: "Choose a small treat within the family budget.", cost: 450, minAge: 8 },
+  { icon: "🎟️", name: "Weekend adventure", description: "Choose a local weekend outing.", cost: 700, minAge: 10 },
+];
+function RewardIdeas({ d, act, close }: { d: DashboardData; act: Act; close: () => void }) {
+  const [childId, setChildId] = useState(d.children[0]?.id ?? ""), [picked, setPicked] = useState<string[]>([]);
+  const child = d.children.find((item) => item.id === childId);
+  const ideas = rewardIdeas.filter((idea) => idea.minAge <= (child?.age ?? 8));
+  const add = () => void act(() => Promise.all(ideas.filter((idea) => picked.includes(idea.name)).map((idea) => api("/parent/rewards", { method: "POST", body: JSON.stringify({ ...idea, stock: 5, enabled: true, requiresApproval: true }) }))), "Reward ideas added.").then(close);
+  return <div className="backdrop"><dialog open><button className="icon close" onClick={close}><X /></button><p className="eyebrow">GUIDED GENERATOR</p><h2>Generate reward ideas</h2>
+    <label>Kid<select value={childId} onChange={(event) => setChildId(event.target.value)}>{d.children.map((item) => <option key={item.id} value={item.id}>{item.name}{item.age ? ` (${item.age})` : ""}</option>)}</select></label>
+    <p className="notice">Age-friendly ideas you can edit anytime.</p>
+    <div className="idea-grid">{ideas.map((idea) => <label key={idea.name} className={picked.includes(idea.name) ? "idea selected" : "idea"}><input type="checkbox" checked={picked.includes(idea.name)} onChange={(event) => setPicked((current) => event.target.checked ? [...current, idea.name] : current.filter((name) => name !== idea.name))} /><span>{idea.icon}</span><strong>{idea.name}</strong><small>{idea.cost} points</small></label>)}</div>
+    <button className="button primary" disabled={!picked.length || !childId} onClick={add}><WandSparkles />Add {picked.length || ""} reward{picked.length === 1 ? "" : "s"}</button>
+  </dialog></div>;
 }
 function RewardForm({
   reward,
@@ -1808,27 +1842,31 @@ function RewardForm({
     </div>
   );
 }
-function Achievements() {
+function Achievements({ d }: { d: DashboardData }) {
+  const [tab, setTab] = useState("all");
+  const done = d.chores.filter((chore) => ["approved", "completed"].includes(chore.status));
+  const achievements = [
+    { icon: "🌱", name: "First Steps", detail: "Complete your first chore", type: "chores", value: done.length, goal: 1, xp: 25 },
+    { icon: "🏆", name: "Quest Collector", detail: "Complete 10 chores", type: "chores", value: done.length, goal: 10, xp: 75 },
+    { icon: "🍽️", name: "Kitchen Warrior", detail: "Complete 50 kitchen chores", type: "rooms", value: done.filter((chore) => chore.category === "kitchen").length, goal: 50, xp: 250 },
+    { icon: "🫧", name: "Bathroom Boss", detail: "Complete 25 bathroom chores", type: "rooms", value: done.filter((chore) => chore.category === "bathroom").length, goal: 25, xp: 150 },
+    { icon: "🔥", name: "On a Roll", detail: "Build a 3-day streak", type: "streaks", value: d.user.bestStreak, goal: 3, xp: 50 },
+    { icon: "⚡", name: "Unstoppable", detail: "Build a 30-day streak", type: "streaks", value: d.user.bestStreak, goal: 30, xp: 400 },
+    { icon: "💚", name: "House Hero", detail: "Complete 100 chores", type: "chores", value: done.length, goal: 100, xp: 500 },
+  ];
+  const shown = tab === "all" ? achievements : achievements.filter((item) => item.type === tab);
+  const levels = [100, 250, 500, 1000];
   return (
     <>
       <Title
         over="TROPHY GARDEN"
         title="Achievements"
-        copy="Every badge tells a story of progress."
+        copy="Complete quests, build streaks, and climb the XP trail."
       />
-      <div className="badges">
-        {[
-          ["🌱", "First Steps"],
-          ["🔥", "Consistency Combo"],
-          ["🏆", "House Hero"],
-          ["✨", "Above & Beyond"],
-        ].map((x, i) => (
-          <article className={i < 2 ? "earned" : ""} key={x[1]}>
-            <span>{x[0]}</span>
-            <h2>{x[1]}</h2>
-            <p>{i < 2 ? "Earned" : "In progress"}</p>
-          </article>
-        ))}
+      <div className="achievement-layout">
+        <aside className="achievement-panel"><img src="/mascot/flex.png" alt="ChoreQuest dog flexing" /><p className="eyebrow">YOUR XP</p><strong>{d.user.xp}</strong><p>Level {d.user.level}</p><div className="achievement-tabs">{[["all","All"],["chores","Chores"],["rooms","Rooms"],["streaks","Streaks"]].map(([value,label]) => <button className={tab === value ? "active" : ""} onClick={() => setTab(value)} key={value}>{label}</button>)}</div></aside>
+        <section className="achievement-list">{shown.map((item) => { const percent = Math.min(100, Math.round(item.value / item.goal * 100)); return <article className={percent >= 100 ? "earned" : ""} key={item.name}><span>{item.icon}</span><div><h2>{item.name}</h2><p>{item.detail}</p><Progress value={percent} /><small>{Math.min(item.value,item.goal)} / {item.goal}</small></div><b>+{item.xp} XP</b></article>; })}</section>
+        <section className="xp-trail"><h2>XP trail</h2><div className="trail-line"><i style={{ height: `${Math.min(100, d.user.xp / 10)}%` }} /></div>{levels.map((level, index) => <article className={d.user.xp >= level ? "reached" : ""} key={level} style={{ bottom: `${(index / (levels.length - 1)) * 86 + 4}%` }}><span>{d.user.xp >= level ? "✓" : index + 1}</span><div><b>{level} XP</b><small>{index === levels.length - 1 ? "Legend chest" : `Bonus reward ${index + 1}`}</small></div></article>)}</section>
       </div>
     </>
   );
@@ -1870,7 +1908,7 @@ function Family({ d, act }: { d: DashboardData; act: Act }) {
           <div className="people family-people">
             {people.map((p) => (
               <article key={p.id}>
-                <span className="avatar">{p.name[0]}</span>
+                <span className="avatar">{avatarFor(p.id) ? <img src={avatarFor(p.id)!} alt="" /> : p.name[0]}</span>
                 <div>
                   <h3>{p.name}</h3>
                   <p>
@@ -2155,6 +2193,40 @@ function AccountSettings({ d, act }: { d: DashboardData; act: Act }) {
     </div>
   );
 }
+function ProfileSettings({ d, act }: { d: DashboardData; act: Act }) {
+  const choices = ["wave", "flex", "rocket", "fire-eyes", "weights", "analyze"];
+  const save = (value: string) => {
+    localStorage.setItem(`cq-avatar:${d.user.id}`, value);
+    void act(() => Promise.resolve(), "Profile picture updated.");
+  };
+  const upload = (file?: File) => {
+    if (!file) return;
+    if (file.size > 1_500_000) {
+      void act(() => Promise.reject(new Error("Choose an image under 1.5 MB.")), "");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => save(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+  return <Section title="Profile picture" copy="Choose a mascot or upload your own.">
+    <div className="avatar-picker">
+      {choices.map((choice) => <button key={choice} className={avatarFor(d.user.id) === `/mascot/${choice}.png` ? "selected" : ""} onClick={() => save(`/mascot/${choice}.png`)}><img src={`/mascot/${choice}.png`} alt={`${choice} dog avatar`} /></button>)}
+    </div>
+    <label className="upload-avatar">Upload a photo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => upload(event.target.files?.[0])} /></label>
+  </Section>;
+}
+function RoomSettings({ d, act }: { d: DashboardData; act: Act }) {
+  const [rooms, setRooms] = useState<string[]>(() => savedRooms(d.user.id));
+  const save = () => {
+    localStorage.setItem(`cq-rooms:${d.user.id}`, JSON.stringify(rooms));
+    void act(() => Promise.resolve(), "Chore rooms saved.");
+  };
+  return <Section title="Chore rooms" copy="These rooms appear in guided chore ideas.">
+    <div className="room-picker">{ROOM_OPTIONS.map(([value, label]) => <label className={rooms.includes(value) ? "room-option selected" : "room-option"} key={value}><input type="checkbox" checked={rooms.includes(value)} onChange={(event) => setRooms((current) => event.target.checked ? [...current, value] : current.filter((room) => room !== value))} /><span>{icons[value]}</span>{label}</label>)}</div>
+    <button className="button primary" onClick={save}>Save rooms</button>
+  </Section>;
+}
 function Prefs({ d, act }: { d: DashboardData; act: Act }) {
   const choose = (theme: Theme) =>
     void act(
@@ -2204,6 +2276,8 @@ function Prefs({ d, act }: { d: DashboardData; act: Act }) {
           ))}
         </div>
       </Section>
+      <ProfileSettings d={d} act={act} />
+      {d.user.role === "parent" ? <RoomSettings d={d} act={act} /> : null}
       {d.user.role === "parent" ? <AccountSettings d={d} act={act} /> : null}
     </>
   );

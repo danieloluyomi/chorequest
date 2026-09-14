@@ -24,7 +24,11 @@ var choreSchema = z.object({
   description: z.string().trim().max(500).default(""),
   category: z.enum([
     "bedroom",
+    "other_bedrooms",
+    "bathroom",
     "kitchen",
+    "attic",
+    "basement",
     "school",
     "pets",
     "outdoors",

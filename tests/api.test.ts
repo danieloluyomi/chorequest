@@ -307,6 +307,25 @@ describe("parent accounts and child profiles", () => {
   });
 });
 describe("management cleanup", () => {
+  it("accepts bathroom chores from the guided room generator", async () => {
+    const created = await request("/parent/chores", "parent-demo", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Wipe the bathroom sink",
+        description: "",
+        category: "bathroom",
+        difficulty: "easy",
+        points: 20,
+        xp: 30,
+        dueAt: new Date(Date.now() + 86400000).toISOString(),
+        recurrence: "weekly",
+        requiresApproval: true,
+        requiresProof: false,
+        assigneeIds: ["student-alex"],
+      }),
+    });
+    expect(created.status).toBe(201);
+  });
   it("edits, bulk removes, and clears chores without exposing another family", async () => {
     const before = await dashboard("parent-demo"),
       chore = before.chores.find((item: { id: string }) => item.id === "a-bed");
@@ -374,6 +393,11 @@ describe("management cleanup", () => {
         .status,
     ).toBe(200);
     expect((await dashboard("student-alex")).notifications).toHaveLength(0);
+  });
+  it("marks the signed-in user's inbox as read", async () => {
+    expect((await dashboard("student-alex")).notifications.some((notice: { read: boolean }) => !notice.read)).toBe(true);
+    expect((await request("/notifications/read", "student-alex", { method: "PUT" })).status).toBe(200);
+    expect((await dashboard("student-alex")).notifications.every((notice: { read: boolean }) => notice.read)).toBe(true);
   });
   it("stores child details used by the chore idea generator", async () => {
     const response = await request("/parent/children", "parent-demo", {
