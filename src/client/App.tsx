@@ -110,6 +110,7 @@ export default function App() {
     }
   };
   useEffect(() => {
+    document.title = "ChoreQuest";
     void load();
   }, []);
   useEffect(() => {
